@@ -1,0 +1,25 @@
+{
+	"description" : "An edgy wallpaper",
+	"file" : "index.html",
+	"general" : 
+	{
+		"properties" : 
+		{
+			"schemecolor" : 
+			{
+				"order" : 0,
+				"text" : "ui_browse_properties_scheme_color",
+				"type" : "color",
+				"value" : "0.1 0.1 0.1"
+			}
+		},
+		"supportsaudioprocessing" : false
+	},
+	"monetization" : false,
+	"preview" : "preview.jpg",
+	"tags" : [ "Abstract" ],
+	"title" : "Edgy",
+	"type" : "web",
+	"visibility" : "public",
+	"workshopid" : 964218348
+}

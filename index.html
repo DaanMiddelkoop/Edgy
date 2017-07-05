@@ -1,0 +1,218 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+	<head>
+		<meta charset="utf-8">
+
+		<title>The HTML5 Herald</title>
+		<meta name="description" content="The HTML5 Herald">
+
+
+		<!--[if lt IE 9]>
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/html5shiv/3.7.3/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+
+	<body style="background-color: black; width: 100%; overflow: hidden;color: #fff">
+		<canvas id="canvas" width="1920" height="1080" style="width: 120%;"></canvas>
+		<script src="colormix-2.0.0.js"></script>
+		<script>
+			var canvas = document.getElementById("canvas");
+			var context = canvas.getContext("2d");
+			var audio = [];
+			var last = performance.now() / 1000;
+			var fpsThreshold = 0;
+			var max_fps = 35;
+
+
+			window.wallpaperPropertyListener = {
+			    applyUserProperties: function(properties) {
+			        // Read scheme color
+			        if (properties.schemecolor) {
+			            // Convert the scheme color to be applied as a CSS style
+			            var schemeColor = properties.schemecolor.value.split(' ');
+			            schemeColor = schemeColor.map(function(c) {
+			                return Math.ceil(c * 255);
+			            });
+			            background_color = 'rgb(' + schemeColor + ')';
+			            draw_hexagons();
+			        }
+			    }
+			};
+
+			window.onload = function() {
+			    //window.wallpaperRegisterAudioListener(wallpaperAudioListener);
+			    window.requestAnimationFrame(run);
+			};
+
+			function wallpaperAudioListener(audioArray) {
+
+				audio = audioArray;
+
+			}
+				
+			function processAudioArray() {
+				if (audio.length == 128) {
+					var sum = 0.0;
+					for (var i = 0; i < 128; i++) {
+						sum += audio[i];
+					}
+
+					for (var i = 0; i < 128; i++) {
+
+						if (audio[i] > average_volume[i] * 2.1 + 0.005 && sum > average_sum * 1.0) {
+							
+						}
+						average_volume[i] = audio[i] * 0.5 + average_volume[i] * 0.5
+					}
+					average_sum = average_sum * 0.95 + sum * 0.05;
+				}
+			}
+
+			function run() {
+				window.requestAnimationFrame(run);
+				var now = performance.now() / 1000;
+			    var dt = Math.min(now - last, 1);
+			    last = now;
+
+			    // If there is an FPS limit, abort updating the animation if we reached the desired FPS
+			    if (max_fps > 0) {
+			        fpsThreshold += dt;
+			        if (fpsThreshold < 1.0 / max_fps) {
+			            return;
+			        }
+			        fpsThreshold -= 1.0 / max_fps;
+			    }
+			    /*
+				var testAudioArray = []
+				for (var i = 0; i < 128; i++) {
+					testAudioArray.push(Math.random());
+				}
+				wallpaperAudioListener(testAudioArray);*/
+
+				move_nodes();
+				context.clearRect(0, 0, canvas.width, canvas.height);
+				draw_edges();
+
+				processAudioArray();
+			}
+
+			var nodes = [];
+			var width = 110;
+			var height = 80;
+			var scale = 2.8;
+			var global_x_offset = 0;
+			var global_y_offset = 0;
+			var global_offset_angle = 0;
+
+			generate_nodes(); 
+			draw_edges();
+
+			function draw_edges() {
+				for (var x = 0; x < width; x++) {
+					for (var y = 0; y < height; y++) {
+						draw_edge(nodes[x * height + y]);
+					}
+				}
+			}
+
+			function draw_edge(node) {
+				context.lineWidth = 1;
+				context.beginPath();
+				for (var i = 0; i < node.connections.length; i++) {
+					node_x = Math.round((node.x * 7 + node.offset_x + Math.cos(node.angle) * node.size) * scale) - global_x_offset;
+					node_y = Math.round((node.y * 7 + node.offset_y + Math.sin(node.angle) * node.size) * scale) - global_y_offset;
+					context.moveTo(node_x, node_y);
+
+					other_node = nodes[node.connections[i].x * height + node.connections[i].y];
+					other_x = Math.round((other_node.x * 7 + other_node.offset_x + Math.cos(other_node.angle) * other_node.size) * scale) - global_x_offset;
+					other_y = Math.round((other_node.y * 7 + other_node.offset_y + Math.sin(other_node.angle) * other_node.size) * scale) - global_y_offset;
+					context.lineTo(other_x, other_y);
+				}
+				context.strokeStyle = node.color;
+				context.stroke();
+			}
+
+			function move_nodes() {
+				for (var i = 0; i < width * height; i++) {
+					move(nodes[i]);
+				}
+
+				global_x_offset = -30 + Math.cos(global_offset_angle) * 250 + 300;
+				global_y_offset = -30 + Math.sin(global_offset_angle) * 250 + 300;
+				global_offset_angle += (1/1000) * Math.PI;
+			}
+
+			function move(node) {
+				node.angle += (1/10) * Math.PI * node.speed;
+			}
+
+			function generate_nodes() {
+				for (var x = 0; x < width; x++) {
+					for (var y = 0; y < height; y++) {
+						var red_part = Math.round((x / width) * 126.0 + (y / height) * 126.0);
+						var green_part = Math.round((x / width) * 126.0 + (y / height) * 126.0);
+						var blue_part = Math.round((x / width) * 126.0 + (y / height) * 126.0);
+
+						if (red_part < 16) {
+							red_part = "0" + red_part.toString(16);
+						}
+						if (green_part < 16) {
+							green_part = "0" + green_part.toString(16);
+						}
+						if (blue_part < 16) {
+							blue_part = "0" + blue_part.toString(16);
+						}
+
+						nodes.push({
+							x: x,
+							y: y,
+							offset_x: Math.random() * 10,
+							offset_y: Math.random() * 10,
+							size: Math.random() * 2,
+							angle: Math.random() * Math.PI * 2,
+							connections: [],
+							color: "#" + red_part + green_part + blue_part,
+							speed: Math.random(),
+						});
+					}
+				}
+
+				for (var x = 0; x < width; x++) {
+					for (var y = 0; y < height; y++) {
+						var connections = [];
+						if (x > 0 && y > 0 && x < width - 2 && y < height - 2) {
+							if (Math.random() < 0.5) {
+								connections.push({
+									x: x - 1,
+									y: y - 1
+								})
+							}
+							if (Math.random() < 0.5) {
+								connections.push({
+									x: x + 1,
+									y: y - 1
+								})
+							}
+							if (Math.random() < 0.5) {
+								connections.push({
+									x: x - 1,
+									y: y + 1
+								})
+							}
+							if (Math.random() < 0.5) {
+								connections.push({
+									x: x + 1,
+									y: y + 1
+								})
+							}
+							node = nodes[x * height + y];
+							node.connections = connections;
+						}
+					}
+				}
+			}
+
+
+		</script>
+	</body>
+</html>
